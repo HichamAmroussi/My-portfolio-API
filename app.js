@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const Message = require('./models/message');
 require('dotenv/config');
-const nodemailer = require('./utils/nodemailer');
+const nodemailer = require('nodemailer');
 
 // Express app
 const app = express();
@@ -28,16 +28,43 @@ app.use(cors({
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// Nodemailer
+const transporter = nodemailer.createTransport({
+    service: "hotmail",
+    auth: {
+        user: process.env.NODEMAILER_ADDRESS,
+        pass: process.env.NODEMAILER_PASSWORD
+    }
+});
+const options = {
+    from: process.env.NODEMAILER_ADDRESS,
+    to: "hicham.amroussi@gmail.com",
+    subject: "Portfolio New Message",
+    text: "\n\n✉️  New message received on your portfolio.\n\n\n\nThis is an Automated Message, please don't respond to it."
+};
+
 // Routes
+app.get('/', (req, res) => {
+    Message.find()
+        .then((response) => res.json(response));
+});
+
 app.post('/messages', (req, res) => {
     const message = new Message(req.body);
 
     message.save()
         .then((result) => {
-            nodemailer();
-            res.json({ message: "Message sent!" });
+            transporter.sendMail(options, (err, info) => {
+                if(err) {
+                    console.log(err);
+                    return;
+                }
+                console.log("Sent" + info.response);
+
+                res.json({ message: "Message sent!" });
+            })
         })
         .catch((err) => {
             console.log(err);
         })
-})
+});
